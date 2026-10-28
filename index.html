@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>点滴 · 选择栏居中展开动效</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="photo-drag.css?v=23"><link rel="stylesheet" href="keyboard-scene.css?v=23"></head>
+<body>
+<main id="stage"><section id="app" data-scene="3" aria-label="点滴记录页面">
+ <div id="records"><div id="recordHead"><img src="assets/records2.png" alt="历史记录"></div><img id="recordBody" src="assets/records1.png" alt="体重记录与趋势"></div>
+ <div id="timeline"></div><img id="header" src="assets/header.png" alt="点滴">
+ <img id="keyboard" src="assets/keyboard.png" alt="键盘"><img id="tabbar" src="assets/tabbar-2x.png" alt="底部导航">
+ <div id="textCard"><div class="text-pill"><span>今天月经来了<i class="caret"></i></span><div class="actions"><button id="camera" aria-label="相机，展开选择栏" aria-expanded="false"><img src="assets/camera-2x.png" alt=""></button><button aria-label="发送"><img src="assets/send-2x.png" alt=""></button></div></div></div>
+ <div id="imageCard"><div id="photoScroller"><div id="photoTrack"><div id="photos"></div><button id="add" aria-label="添加图片，展开选择栏" aria-expanded="false"><img src="assets/add-tile-2x.png" alt=""></button></div></div><div class="input-row"><img src="assets/voice.svg" alt="语音"><span>点击输入或按住语音记录</span><button aria-label="发送"><img src="assets/send-2x.png" alt=""></button></div></div>
+ <div id="dismiss" hidden></div>
+ <div id="menuAnchor"><div id="menu" role="menu" aria-label="照片来源" inert><button id="takePhoto" role="menuitem"><img src="assets/camera-2x.png" alt=""><span id="cameraLabel">拍照</span></button><button id="choosePhoto" role="menuitem"><img src="assets/album-2x.png" alt=""><span>从相册选择</span></button></div></div>
+ <section id="keyboardScene" aria-label="展开键盘动效" data-state="closed">
+  <div id="keyboardRecordsViewport"><img id="keyboardRecords" src="assets/keyboard-records.png" alt="体重记录与趋势"></div>
+  <img id="keyboardSceneTabs" src="assets/tabbar-2x.png" alt="底部导航">
+  <div id="keyboardUnderlay"><img src="assets/keyboard-panel-2x.png" alt="工具面板图标和把手"></div>
+  <div id="keyboardTimeline" aria-hidden="true"></div>
+  <div id="keyboardInput">
+   <div id="keyboardPhotoScroller"><div id="keyboardPhotoTrack"><div id="keyboardPhotos"></div><button id="keyboardAdd" aria-label="添加图片，展开选择栏" aria-expanded="false"><img src="assets/add-tile-2x.png" alt=""></button></div></div>
+   <div id="keyboardInputRow"><button id="keyboardTextInput" aria-label="点击文字输入区，展开键盘" aria-expanded="false"><img src="assets/voice.svg" alt="语音"><span id="keyboardPlaceholder">点击输入或按住语音记录</span></button><button id="keyboardSend" aria-label="发送"><img src="assets/send-2x.png" alt=""></button></div>
+  </div>
+  <img id="keyboardSheet" src="assets/keyboard-2x.png" alt="键盘">
+  <button id="keyboardDismiss" aria-label="点击内容区收起键盘" hidden></button>
+  <button id="keyboardHideKey" aria-label="收起键盘" hidden></button>
+ </section>
+ <div id="keyboardMenuBlocker" hidden></div>
+ <div id="keyboardMenuAnchor" hidden><div id="keyboardMenu" role="menu" aria-label="照片来源"><button role="menuitem" data-source="camera"><img src="assets/camera-2x.png" alt="">相机</button><button role="menuitem" data-source="album"><img src="assets/album-2x.png" alt="">从相册选择</button></div></div>
+</section></main>
+<script src="app.js?v=23"></script><script src="photo-drag.js?v=23"></script><script src="keyboard-scene.js?v=23"></script></body></html>

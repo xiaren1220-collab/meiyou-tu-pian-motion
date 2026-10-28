@@ -1,0 +1,8 @@
+/* Existing 76px photos, 8px gaps and corners stay in styles.css. */
+#photoScroller{width:378px;margin-left:-12px;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;}
+#photoScroller:active{cursor:grabbing;}
+#photoTrack{padding-left:12px;padding-right:12px;will-change:transform;}
+#add[hidden]{display:none;}
+#add{border:0;padding:0;}
+#add img{width:76px;height:76px;}
+#photoScroller,#photoScroller *,#keyboardPhotoScroller,#keyboardPhotoScroller *{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}

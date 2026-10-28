@@ -1,0 +1,54 @@
+#keyboardScene{display:none;position:absolute;inset:0;z-index:2;pointer-events:none;overflow:clip;}
+#app[data-scene="3"] #keyboardScene{display:block;}
+#app[data-scene="3"]{overflow:clip;}
+#app[data-scene="3"]>#records,#app[data-scene="3"]>#textCard,#app[data-scene="3"]>#imageCard,#app[data-scene="3"]>#keyboard,#app[data-scene="3"]>#tabbar{display:none;}
+#app[data-scene="3"]>#header{z-index:20;}
+#keyboardRecordsViewport{position:absolute;top:106px;left:0;width:402px;bottom:0;overflow:hidden;}
+#keyboardRecords{position:absolute;top:-106px;left:0;width:402px;height:498px;will-change:transform;}
+#keyboardTimeline{position:absolute;left:11.5px;top:106px;bottom:0;width:1px;background:#dfdfe1;z-index:1;}
+#keyboardSceneTabs{position:absolute;top:791px;left:0;width:402px;height:83px;z-index:3;}
+#keyboardUnderlay{position:absolute;left:-8px;top:486px;width:418px;height:317px;z-index:2;will-change:transform,opacity;}
+#keyboardUnderlay img{width:418px;height:317px;}
+#keyboardInput{position:absolute;left:24px;top:627px;width:354px;height:144px;z-index:4;pointer-events:auto;border-radius:16px;border:1px solid #dfdfe1;background:#fff;will-change:transform,width;overflow:hidden;}
+#keyboardPhotoScroller{position:absolute;left:0;right:0;top:11px;height:76px;overflow:auto hidden;scrollbar-width:none;touch-action:none;cursor:grab;user-select:none;overscroll-behavior:contain;}
+#keyboardPhotoScroller::-webkit-scrollbar{display:none;}
+#keyboardPhotoScroller:active{cursor:grabbing;}
+#keyboardPhotoTrack{display:flex;gap:8px;width:max-content;padding:0 11px;will-change:transform;}
+#keyboardPhotos{display:flex;gap:8px;}
+#keyboardPhotos:empty{display:none;}
+#keyboardAdd{width:76px;height:76px;flex:none;}
+#keyboardAdd img{width:76px;height:76px;}
+#keyboardAdd[hidden]{display:none;}
+#keyboardInputRow{position:absolute;left:11px;right:11px;bottom:11px;height:28px;display:flex;align-items:center;justify-content:space-between;}
+#keyboardTextInput{display:flex;gap:8px;align-items:center;height:40px;flex:1;min-width:0;white-space:nowrap;text-align:left;}
+#keyboardTextInput>img{width:26px;height:26px;}
+#keyboardPlaceholder{position:relative;font-size:17px;line-height:28px;color:#ccc;}
+#keyboardScene[data-keyboard-active="true"] #keyboardPlaceholder::before{content:"";position:absolute;left:0;top:6px;width:1.5px;height:18px;background:#ff448c;}
+#keyboardSend,#keyboardSend img{width:26px;height:26px;flex:none;}
+#keyboardSheet{position:absolute;left:0;top:549px;width:402px;height:325px;transform:translateY(325px);z-index:5;will-change:transform;}
+#keyboardDismiss{position:absolute;top:106px;left:0;width:402px;height:291px;pointer-events:auto;z-index:3;}
+#keyboardHideKey{position:absolute;left:364px;top:549px;width:38px;height:42px;pointer-events:auto;z-index:6;}
+#keyboardMenuBlocker{position:absolute;inset:0;z-index:50;touch-action:none;}
+#keyboardMenuAnchor{position:absolute;width:145px;height:104px;z-index:51;}
+#keyboardMenu{width:145px;height:104px;background:white;padding:4px 16px;border-radius:12px;box-shadow:0 0 20px #00000014;transform-origin:50% 50%;}
+#keyboardMenu button{width:113px;height:48px;display:flex;align-items:center;gap:8px;font-size:17px;line-height:22px;letter-spacing:-.0731px;white-space:nowrap;}
+#keyboardMenu button:first-child{border-bottom:.5px solid #e8e8e8;}
+#keyboardMenu button img{width:20px;height:20px;}
+.scene-tabs button{padding-left:12px;padding-right:12px;white-space:nowrap;}
+@media(max-width:370px){.scene-tabs button{font-size:12px;padding-left:9px;padding-right:9px;}}
+
+/* Keep the original exported icon strip at its native size as the panel contracts. */
+#keyboardUnderlay{left:12px;top:506px;width:378px;height:277px;border-radius:20px;background:rgba(255,255,255,.7);box-shadow:0 0 20px #00000014;}
+#keyboardUnderlay img{position:absolute;left:-20px;top:-20px;clip-path:inset(0 0 184px 0);pointer-events:none;}
+#keyboardCamera{position:absolute;right:4px;top:1px;width:26px;height:26px;opacity:0;pointer-events:none;}
+#keyboardCamera img{width:26px;height:26px;}
+#keyboardCompactBase{position:absolute;left:12px;width:378px;height:72px;border-radius:20px;background:rgba(255,255,255,.7);box-shadow:0 0 20px #00000014;z-index:2;opacity:0;}
+/* All panel surfaces and icon fading come from the original Figma export. */
+#keyboardUnderlay,#keyboardCompactBase{left:-8px;width:418px;background:none;box-shadow:none;border-radius:0;}
+#keyboardUnderlay img,#keyboardCompactBase img{position:absolute;left:0;width:418px;clip-path:none;}
+#keyboardUnderlay .panelTop{top:0;height:153px;}
+#keyboardUnderlay .panelCap,#keyboardCompactBase .panelCap{top:0;height:40px;}
+#keyboardUnderlay .panelMiddle,#keyboardCompactBase .panelMiddle{top:40px;bottom:40px;height:calc(100% - 80px);}
+#keyboardUnderlay .panelBottom,#keyboardCompactBase .panelBottom{top:auto;bottom:0;height:40px;}
+#keyboardCompactBase{height:112px;}
+#keyboardCamera{top:50%;transform:translateY(-50%);}
