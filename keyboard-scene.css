@@ -52,3 +52,4 @@
 #keyboardUnderlay .panelBottom,#keyboardCompactBase .panelBottom{top:auto;bottom:0;height:40px;}
 #keyboardCompactBase{height:112px;}
 #keyboardCamera{top:50%;transform:translateY(-50%);}
+#keyboardScene[data-flat-input="true"] #keyboardPlaceholder::before{display:none;}

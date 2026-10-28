@@ -5,7 +5,7 @@
  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
  const MOTION={open:200,close:167,easing:'cubic-bezier(0.2, 0.8, 0.2, 1)',initialScale:.12};
  let scene=Number(app.dataset.scene),opened=false,animation=null,items=[{src:'assets/photo.png',local:false}],serial=0;
- function resize(){const scale=Math.min(1,(innerWidth-0)/402,innerHeight/874);stage.style.setProperty('--scale',Math.max(.2,scale));if(opened)position();}
+ function resize(){const scale=Math.min(1,(innerWidth-0)/402,(innerHeight-48)/874);stage.style.setProperty('--scale',Math.max(.2,scale));if(opened)position();}
  function trigger(){return scene===1?camera:add;}
  function position(){const scale=app.getBoundingClientRect().width/402;const box=app.getBoundingClientRect(),t=trigger().getBoundingClientRect();const tx=(t.left+t.width/2-box.left)/scale,ty=(t.top+t.height/2-box.top)/scale;const cardY=scene===1?469:639;const left=Math.max(12,Math.min(390-145,tx-145/2)),top=cardY-8-104;anchor.style.left=left+'px';anchor.style.top=top+'px';return {dx:tx-left-72.5,dy:ty-top-52};}
  function setOpen(next){const {dx,dy}=position();const id=++serial;const current=animation?{transform:getComputedStyle(menu).transform,opacity:getComputedStyle(menu).opacity}:null;animation?.cancel();opened=next;camera.setAttribute('aria-expanded',String(next&&scene===1));add.setAttribute('aria-expanded',String(next&&scene===2));dismiss.hidden=!next;menu.inert=!next;

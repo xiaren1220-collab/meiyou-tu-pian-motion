@@ -8,60 +8,67 @@
  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
  const DURATION=333,EASING='cubic-bezier(0.2, 0.8, 0.2, 1)';
  const endpoints={
-  closed:{x:24,y:627,width:354,height:144,empty:0,records:-12,retract:0,keyboard:0,menu:0},
-  menu:{x:12,y:639,width:378,height:144,empty:0,records:121,retract:1,keyboard:0,menu:1},
-  keyboard:{x:12,y:397,width:378,height:144,empty:0,records:-121,retract:1,keyboard:1,menu:0},
+  closed:{x:24,y:627,width:354,height:144,empty:0,flat:0,layer:0,records:-12,retract:0,keyboard:0,menu:0},
+  menu:{x:12,y:639,width:378,height:144,empty:0,flat:0,layer:0,records:121,retract:1,keyboard:0,menu:1},
+  keyboard:{x:12,y:397,width:378,height:144,empty:0,flat:0,layer:0,records:-121,retract:1,keyboard:1,menu:0},
  };
- let current={...endpoints.closed},mode='closed',frame=0,clock=null,items=[1],nextId=1;
+ let current={...endpoints.closed,bgTop:506,bgBottom:783,bgOpacity:1,icons:1},mode='closed',frame=0,clock=null,items=[1],nextId=1;
  let suppressOutsideClick=false,pendingReveal=false,lastTrigger=null,followTrailing=false;
  let restoring=false,restoreTop=0,restoreBottom=0,restoreProgress=0;
- let menuReturn='closed';
+ let menuReturn='closed',variant='1';
  const clamp=x=>Math.max(0,Math.min(1,x));
  const ease=x=>1-Math.pow(1-clamp(x),3);
+ function surface(value){
+  const tools=value.retract===0;
+  return {...value,bgTop:tools?506+96*value.empty:value.y-12*value.layer,bgBottom:tools?783:value.y+value.height+12*value.layer,bgOpacity:tools?1:value.layer,icons:tools?1:0};
+ }
  function endpoint(next){
-  if(next==='menu'&&menuReturn==='keyboard')return {...endpoint('keyboard'),menu:1};
+  if(next==='menu'&&menuReturn==='keyboard'){const value={...endpoint('keyboard'),menu:1};if(variant==='2'&&!items.length)Object.assign(value,{x:12,y:493,width:378,records:-25,flat:1});return surface(value);}
   const value={...endpoints[next]};
+  if(variant==='1'&&next==='menu'&&items.length)Object.assign(value,{x:24,y:627,width:354,records:97,layer:1});
+  if(variant==='1'&&next==='keyboard'&&items.length)Object.assign(value,{x:24,y:385,width:354,records:-145,layer:1});
   if(!items.length){Object.assign(value,{height:48,empty:1});
    if(next==='closed')Object.assign(value,{y:723,records:84});
-   if(next==='keyboard')Object.assign(value,{x:24,y:481,width:354,records:-49});
-   if(next==='menu')Object.assign(value,{x:24,y:723,width:354,records:205});
-  }return value;
+   if(next==='keyboard')Object.assign(value,variant==='2'?{x:12,y:493,width:378,records:-25,flat:1}:{x:24,y:481,width:354,records:-49,layer:1});
+   if(next==='menu')Object.assign(value,variant==='2'?{x:12,y:735,width:378,records:143,flat:1}:{x:24,y:723,width:354,records:143,layer:1});
+  }return surface(value);
  }
  function positionMenu(){
   const a=app.getBoundingClientRect(),s=a.width/402,b=(items.length?add:camera).getBoundingClientRect();
   if(!add.hidden||!items.length)lastTrigger={tx:(b.left+b.width/2-a.left)/s,ty:(b.top+b.height/2-a.top)/s};
   const {tx,ty}=lastTrigger??{tx:201,ty:current.y+50};
-  const left=Math.max(12,Math.min(245,tx-72.5)),top=current.y-112-12*current.empty*current.keyboard;
+  const left=Math.max(12,Math.min(245,tx-72.5)),top=current.y-112-12*current.layer;
   anchor.style.left=`${left}px`;anchor.style.top=`${top}px`;
   const p=current.menu;
   menu.style.transform=`translate(${(tx-left-72.5)*(1-p)}px,${(ty-top-52)*(1-p)}px) scale(${.12+.88*p})`;
   menu.style.opacity=String(p);
  }
  function render(value){
-  current={...value};const p=clamp(current.retract),r=ease(p/.5);
-  const finalTop=506+96*current.empty,finalBottom=783;
-  const layerTop=restoring?restoreTop+(finalTop-restoreTop)*restoreProgress:finalTop+76*r;
-  const layerBottom=restoring?restoreBottom+(finalBottom-restoreBottom)*restoreProgress:finalBottom+76*r;
+  current={...value};
+  // One continuous source-derived surface: never swap or overlap translucent cards.
+  const layerTop=current.bgTop,layerBottom=current.bgBottom;
   underlay.style.top=`${layerTop-20}px`;underlay.style.height=`${layerBottom-layerTop+40}px`;
-  underlay.style.transform='none';underlay.style.opacity=String(restoring?1:1-r);
-  underlay.style.visibility=restoring||r<1?'visible':'hidden';
+  underlay.style.transform='none';underlay.style.opacity=String(current.bgOpacity);
+  underlay.style.visibility=current.bgOpacity>0?'visible':'hidden';
   const iconStrip=underlay.querySelector('.panelTop');
-  iconStrip.style.opacity=String(restoring?restoreProgress:1);
+  iconStrip.style.opacity=String(current.icons);
   iconStrip.style.clipPath=`inset(0 0 ${Math.max(0,153-(layerBottom-layerTop))}px 0)`;
-  const stripHeight=Math.min(153,layerBottom-layerTop);
-  const middleTop=restoring?40+(stripHeight-40)*restoreProgress:stripHeight;
-  underlay.querySelector('.panelCap').style.opacity=String(restoring?1-restoreProgress:0);
-  const middle=underlay.querySelector('.panelMiddle');middle.style.top=`${middleTop}px`;middle.style.height=`${Math.max(0,layerBottom-layerTop-middleTop)}px`;
+  const middle=underlay.querySelector('.panelMiddle');middle.style.top='40px';middle.style.height=`${Math.max(0,layerBottom-layerTop-40)}px`;
+  underlay.querySelector('.panelCap').style.opacity='1';
   card.style.height=`${current.height}px`;card.style.borderRadius=`${16+10*current.empty}px`;
   viewport.style.opacity=String(1-current.empty);viewport.style.pointerEvents=current.empty>.01?'none':'auto';
   $('#keyboardSend').style.opacity=String(1-current.empty);$('#keyboardSend').style.pointerEvents=current.empty>.01?'none':'auto';
   camera.style.opacity=String(current.empty);camera.style.pointerEvents=current.empty>.99?'auto':'none';
   $('#keyboardInputRow').style.bottom=`${11-2*current.empty}px`;
-  $('#keyboardCompactBase').style.opacity=String(restoring?0:current.empty*current.keyboard);$('#keyboardCompactBase').style.top=`${current.y-32}px`;
+  $('#keyboardCompactBase').style.opacity='0';$('#keyboardCompactBase').style.top=`${current.y-32}px`;$('#keyboardCompactBase').style.height=`${current.height+64}px`;
   card.style.left=`${current.x}px`;card.style.top=`${current.y}px`;card.style.width=`${current.width}px`;
   if(followTrailing)viewport.scrollLeft=Math.max(0,track.offsetWidth-viewport.clientWidth);
   sheet.style.transform=`translateY(${325*(1-current.keyboard)}px)`;
   records.style.transform=`translateY(${current.records}px)`;
+  // Cut the continuous line beneath the exported nodes instead of drawing over them.
+  const holes=[current.records-126.5,current.records-82,current.records+15].filter(y=>y>0&&y<768);
+  const stops=['#000 0px'];for(const y of holes)stops.push(`#000 ${y-4}px`,`transparent ${y-4}px`,`transparent ${y+4}px`,`#000 ${y+4}px`);stops.push('#000 100%');
+  $('#keyboardTimeline').style.maskImage=`linear-gradient(to bottom,${stops.join(',')})`;
   tabs.style.transform=`translateY(${83*current.keyboard}px)`;
   dismiss.hidden=mode!=='keyboard'||current.keyboard===0;dismiss.style.height=`${Math.max(0,current.y-106)}px`;
   hideKey.hidden=current.keyboard<.999;
@@ -74,14 +81,16 @@
   followTrailing=pendingReveal||viewport.scrollLeft>=Math.max(0,track.offsetWidth-viewport.clientWidth)-2;
   const from={...current},to=endpoint(next),start=performance.now();
   restoring=next==='closed'&&mode!=='closed';restoreProgress=0;
-  restoreTop=current.y-12*current.empty;restoreBottom=current.y+current.height+12*current.empty;
+  restoreTop=current.y-12*current.layer;restoreBottom=current.y+current.height+12*current.layer;
   mode=next;
   scene.dataset.mode=next;scene.dataset.state=next==='closed'?'closing':'opening';
   scene.dataset.keyboardActive=String(to.keyboard===1);
+  scene.dataset.flatInput=String(to.flat===1);
+  menu.querySelector('[data-source="camera"]').lastChild.textContent=!items.length?'拍照':'相机';
   viewport.dispatchEvent(new Event('reset-photo-drag'));
   viewport.style.overflowX=next==='menu'?'hidden':'auto';
   text.setAttribute('aria-expanded',String(to.keyboard===1));add.setAttribute('aria-expanded',String(next==='menu'));
-  $('#keyboardPlaceholder').textContent=to.keyboard===1?'输入你想记录的':'点击输入或按住语音记录';
+  $('#keyboardPlaceholder').textContent=to.keyboard===1&&to.flat!==1?'输入你想记录的':'点击输入或按住语音记录';
   if(next==='menu'){anchor.hidden=blocker.hidden=false;}
   const duration=reduced.matches?1:DURATION;
   clock=document.createElement('div').animate([{opacity:0},{opacity:1}],{duration,easing:EASING,fill:'both'});clock.pause();
@@ -125,13 +134,14 @@
  document.addEventListener('pointerdown',event=>{if(!blocker.hidden&&anchor.contains(event.target))suppressOutsideClick=false;},true);
  blocker.onclick=event=>{event.stopPropagation();if(mode==='menu')animate(menuReturn);};
  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&app.dataset.scene==='3'&&mode!=='closed')animate(mode==='menu'?menuReturn:'closed');});
- function reset(){cancelAnimationFrame(frame);clock?.cancel();mode='closed';scene.dataset.keyboardActive='false';scene.dataset.mode='closed';scene.dataset.state='closed';suppressOutsideClick=false;render(endpoint('closed'));text.setAttribute('aria-expanded','false');add.setAttribute('aria-expanded','false');viewport.style.overflowX='auto';$('#keyboardPlaceholder').textContent='点击输入或按住语音记录';}
- document.querySelectorAll('[role=tab]').forEach(tab=>tab.addEventListener('click',reset));
+ function reset(){cancelAnimationFrame(frame);clock?.cancel();mode='closed';scene.dataset.flatInput='false';scene.dataset.keyboardActive='false';scene.dataset.mode='closed';scene.dataset.state='closed';suppressOutsideClick=false;render(endpoint('closed'));text.setAttribute('aria-expanded','false');add.setAttribute('aria-expanded','false');viewport.style.overflowX='auto';$('#keyboardPlaceholder').textContent='点击输入或按住语音记录';}
+ document.querySelectorAll('[data-variant]').forEach(tab=>tab.addEventListener('click',()=>{variant=tab.dataset.variant;records.src='assets/variant-records-2x.png';records.style.top='-153px';records.style.height='545px';document.querySelectorAll('[data-variant]').forEach(t=>t.setAttribute('aria-selected',String(t===tab)));reset();}));
  window.addEventListener('resize',()=>{if(mode==='menu')positionMenu();});
  viewport.addEventListener('scroll',()=>{if(mode==='menu')positionMenu();});
- const slices='<img class="panelCap" src="assets/panel-cap-2x.png" alt=""><img class="panelMiddle" src="assets/panel-middle-2x.png" alt=""><img class="panelBottom" src="assets/panel-bottom-2x.png" alt=""><img class="panelTop" src="assets/panel-top-2x.png" alt="">';
+ const slices='<img class="panelCap" src="assets/panel-cap-2x.png" alt=""><img class="panelMiddle" src="assets/panel-middle-2x.png" alt=""><img class="panelBottom" src="assets/panel-bottom-2x.png" alt=""><img class="panelTop" src="assets/panel-icons-2x.png" alt="">';
  underlay.innerHTML=slices;
  const base=document.createElement('div');base.id='keyboardCompactBase';base.innerHTML=slices.replace(/<img class="panelTop"[^>]*>/,'');scene.insertBefore(base,card);
+ records.src='assets/variant-records-2x.png';records.style.top='-153px';records.style.height='545px';
  reset();renderPhotos();
  window.keyboardSceneDemo={get state(){return mode},get values(){return {...current}},get imageCount(){return items.length},addPhoto(){if(items.length<9)items.push(++nextId);renderPhotos();animate('closed');},duration:DURATION};
 })();
