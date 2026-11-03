@@ -58,10 +58,13 @@
   const middle=underlay.querySelector('.panelMiddle');middle.style.top='40px';middle.style.height=`${Math.max(0,layerBottom-layerTop-40)}px`;
   underlay.querySelector('.panelCap').style.opacity='1';
   card.style.height=`${current.height}px`;card.style.borderRadius=`${16+10*current.empty}px`;
+  const borderOpacity=variant==='2'?1-clamp(current.retract):1;
+  card.style.borderColor=`rgba(223, 223, 225, ${borderOpacity})`;
+  card.style.boxShadow=variant==='2'?`inset 0 0 0 1px rgba(223, 223, 225, ${borderOpacity})`:'';
   viewport.style.opacity=String(1-current.empty);viewport.style.pointerEvents=current.empty>.01?'none':'auto';
   $('#keyboardSend').style.opacity=String(1-current.empty);$('#keyboardSend').style.pointerEvents=current.empty>.01?'none':'auto';
   camera.style.opacity=String(current.empty);camera.style.pointerEvents=current.empty>.99?'auto':'none';
-  $('#keyboardInputRow').style.bottom=`${11-2*current.empty}px`;
+  $('#keyboardInputRow').style.bottom=`${11-2*current.empty+(variant==='2'?1:0)}px`;
   $('#keyboardCompactBase').style.opacity='0';$('#keyboardCompactBase').style.top=`${current.y-32}px`;$('#keyboardCompactBase').style.height=`${current.height+64}px`;
   card.style.left=`${current.x}px`;card.style.top=`${current.y}px`;card.style.width=`${current.width}px`;
   if(followTrailing)viewport.scrollLeft=Math.max(0,track.offsetWidth-viewport.clientWidth);
@@ -160,7 +163,7 @@
  document.addEventListener('pointerdown',event=>{if(!blocker.hidden&&anchor.contains(event.target))suppressOutsideClick=false;},true);
  blocker.onclick=event=>{event.stopPropagation();if(mode==='menu')animate(menuReturn);};
  document.addEventListener('keydown',event=>{if(event.key!=='Escape'||app.dataset.scene!=='3')return;if(cameraState==='open'){closeCamera(false);return;}if(cameraState==='closed'&&mode!=='closed')animate(mode==='menu'?menuReturn:'closed');});
- function reset(){cancelAnimationFrame(frame);clock?.cancel();mode='closed';scene.dataset.flatInput='false';scene.dataset.keyboardActive='false';scene.dataset.mode='closed';scene.dataset.state='closed';suppressOutsideClick=false;render(endpoint('closed'));text.setAttribute('aria-expanded','false');add.setAttribute('aria-expanded','false');viewport.style.overflowX='auto';$('#keyboardPlaceholder').textContent='点击输入或按住语音记录';}
+ function reset(){cancelAnimationFrame(frame);clock?.cancel();mode='closed';scene.dataset.variant=variant;scene.dataset.flatInput='false';scene.dataset.keyboardActive='false';scene.dataset.mode='closed';scene.dataset.state='closed';suppressOutsideClick=false;render(endpoint('closed'));text.setAttribute('aria-expanded','false');add.setAttribute('aria-expanded','false');viewport.style.overflowX='auto';$('#keyboardPlaceholder').textContent='点击输入或按住语音记录';}
  document.querySelectorAll('[data-variant]').forEach(tab=>tab.addEventListener('click',()=>{variant=tab.dataset.variant;records.src='assets/variant-records-2x.png';records.style.top='-153px';records.style.height='545px';document.querySelectorAll('[data-variant]').forEach(t=>t.setAttribute('aria-selected',String(t===tab)));reset();}));
  window.addEventListener('resize',()=>{if(mode==='menu')positionMenu();});
  viewport.addEventListener('scroll',()=>{if(mode==='menu')positionMenu();});
