@@ -4,6 +4,7 @@
  const tabs=$('#keyboardSceneTabs'),dismiss=$('#keyboardDismiss'),hideKey=$('#keyboardHideKey');
  const viewport=$('#keyboardPhotoScroller'),track=$('#keyboardPhotoTrack'),photos=$('#keyboardPhotos'),add=$('#keyboardAdd'),text=$('#keyboardTextInput');
  const blocker=$('#keyboardMenuBlocker'),anchor=$('#keyboardMenuAnchor'),menu=$('#keyboardMenu');
+ const cameraScreen=$('#cameraScreen'),cameraClose=$('#cameraClose'),cameraCapture=$('#cameraCapture');
  const camera=document.createElement('button');camera.id='keyboardCamera';camera.setAttribute('aria-label','相机，展开选择栏');camera.innerHTML='<img src="assets/camera-2x.png" alt="">';$('#keyboardInputRow').append(camera);
  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
  const DURATION=333,EASING='cubic-bezier(0.2, 0.8, 0.2, 1)';
@@ -16,6 +17,7 @@
  let suppressOutsideClick=false,pendingReveal=false,lastTrigger=null,followTrailing=false;
  let restoring=false,restoreTop=0,restoreBottom=0,restoreProgress=0;
  let menuReturn='closed',variant='1';
+ let cameraState='closed',cameraAnimation=null;
  const clamp=x=>Math.max(0,Math.min(1,x));
  const ease=x=>1-Math.pow(1-clamp(x),3);
  function surface(value){
@@ -120,12 +122,36 @@
   add.hidden=!items.length||items.length>=9;
   requestAnimationFrame(()=>{viewport.scrollTo({left:track.offsetWidth-viewport.clientWidth,behavior:reduced.matches?'instant':'smooth'});});
  }
+ function openCamera(){
+  if(cameraState!=='closed')return;
+  cameraState='opening';cameraScreen.hidden=false;
+  document.querySelector('.scene-tabs').inert=true;
+  animate(menuReturn);
+  cameraAnimation?.cancel();
+  cameraAnimation=cameraScreen.animate([{transform:'translateY(100%)'},{transform:'translateY(0)'}],
+   {duration:reduced.matches?1:DURATION,easing:EASING,fill:'both'});
+  cameraAnimation.onfinish=()=>{cameraState='open';cameraClose.focus({preventScroll:true});};
+ }
+ function closeCamera(capture=false){
+  if(cameraState!=='open'&&cameraState!=='opening')return;
+  const previousTransform=getComputedStyle(cameraScreen).transform;
+  cameraState='closing';
+  if(capture&&items.length<9){items.push(++nextId);pendingReveal=true;renderPhotos();}
+  animate(items.length?'keyboard':'closed');
+  cameraAnimation?.cancel();
+  cameraAnimation=cameraScreen.animate([{transform:previousTransform==='none'?'translateY(0)':previousTransform},{transform:'translateY(100%)'}],
+   {duration:reduced.matches?1:DURATION,easing:EASING,fill:'forwards'});
+  cameraAnimation.onfinish=()=>{cameraScreen.hidden=true;cameraAnimation.cancel();cameraAnimation=null;cameraState='closed';document.querySelector('.scene-tabs').inert=false;};
+ }
  window.attachPhotoDrag(viewport,track,photos,()=>app.dataset.scene==='3'&&((mode==='closed'&&scene.dataset.state==='closed')||(mode==='keyboard'&&scene.dataset.state==='open')));
  text.onclick=()=>{if(mode==='closed')animate('keyboard');};
  camera.onclick=()=>{if(mode==='closed'||mode==='keyboard')animate('menu');};
  add.onclick=()=>{if(mode==='closed'||mode==='keyboard')animate('menu');};
  dismiss.onclick=hideKey.onclick=()=>animate('closed');
- for(const button of menu.querySelectorAll('button'))button.onclick=()=>{if(items.length<9)items.push(++nextId);pendingReveal=true;renderPhotos();animate(menuReturn);};
+ menu.querySelector('[data-source="camera"]').onclick=openCamera;
+ menu.querySelector('[data-source="album"]').onclick=()=>{if(items.length<9)items.push(++nextId);pendingReveal=true;renderPhotos();animate(menuReturn);};
+ cameraClose.onclick=()=>closeCamera(false);
+ cameraCapture.onclick=()=>closeCamera(true);
  document.addEventListener('pointerdown',event=>{
   if(app.dataset.scene!=='3'||mode!=='menu'||anchor.contains(event.target))return;
   event.preventDefault();event.stopImmediatePropagation();suppressOutsideClick=true;animate(menuReturn);
@@ -133,7 +159,7 @@
  document.addEventListener('click',event=>{if(suppressOutsideClick){suppressOutsideClick=false;event.preventDefault();event.stopImmediatePropagation();}},true);
  document.addEventListener('pointerdown',event=>{if(!blocker.hidden&&anchor.contains(event.target))suppressOutsideClick=false;},true);
  blocker.onclick=event=>{event.stopPropagation();if(mode==='menu')animate(menuReturn);};
- document.addEventListener('keydown',event=>{if(event.key==='Escape'&&app.dataset.scene==='3'&&mode!=='closed')animate(mode==='menu'?menuReturn:'closed');});
+ document.addEventListener('keydown',event=>{if(event.key!=='Escape'||app.dataset.scene!=='3')return;if(cameraState==='open'){closeCamera(false);return;}if(cameraState==='closed'&&mode!=='closed')animate(mode==='menu'?menuReturn:'closed');});
  function reset(){cancelAnimationFrame(frame);clock?.cancel();mode='closed';scene.dataset.flatInput='false';scene.dataset.keyboardActive='false';scene.dataset.mode='closed';scene.dataset.state='closed';suppressOutsideClick=false;render(endpoint('closed'));text.setAttribute('aria-expanded','false');add.setAttribute('aria-expanded','false');viewport.style.overflowX='auto';$('#keyboardPlaceholder').textContent='点击输入或按住语音记录';}
  document.querySelectorAll('[data-variant]').forEach(tab=>tab.addEventListener('click',()=>{variant=tab.dataset.variant;records.src='assets/variant-records-2x.png';records.style.top='-153px';records.style.height='545px';document.querySelectorAll('[data-variant]').forEach(t=>t.setAttribute('aria-selected',String(t===tab)));reset();}));
  window.addEventListener('resize',()=>{if(mode==='menu')positionMenu();});

@@ -53,3 +53,9 @@
 #keyboardCompactBase{height:112px;}
 #keyboardCamera{top:50%;transform:translateY(-50%);}
 #keyboardScene[data-flat-input="true"] #keyboardPlaceholder::before{display:none;}
+#cameraScreen{position:absolute;inset:0;z-index:80;overflow:hidden;background:#000;touch-action:none;will-change:transform;}
+#cameraScreen[hidden]{display:none;}
+#cameraScreen>img{width:402px;height:874px;}
+#cameraScreen button{position:absolute;background:transparent;border:0;-webkit-tap-highlight-color:transparent;}
+#cameraClose{left:4px;top:62px;width:42px;height:44px;}
+#cameraCapture{left:156px;top:696px;width:90px;height:90px;border-radius:50%;}
