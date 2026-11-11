@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>点滴 · 选择栏居中展开动效</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="photo-drag.css?v=28"><link rel="stylesheet" href="keyboard-scene.css?v=31"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>点滴 · 选择栏居中展开动效</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="photo-drag.css?v=28"><link rel="stylesheet" href="keyboard-scene.css?v=42"></head>
 <body>
-<nav class="scene-tabs" role="tablist" aria-label="切换方案"><button role="tab" aria-selected="true" data-variant="1">方案1（双层）</button><button role="tab" aria-selected="false" data-variant="2">方案2（单层）</button></nav>
+<nav class="scene-tabs" role="tablist" aria-label="切换方案"><button role="tab" aria-selected="true" data-variant="2">方案1（单层 最终选用）</button><button role="tab" aria-selected="false" data-variant="1">方案2（双层 废弃）</button></nav>
 <main id="stage"><section id="app" data-scene="3" aria-label="点滴记录页面">
  <div id="records"><div id="recordHead"><img src="assets/records2.png" alt="历史记录"></div><img id="recordBody" src="assets/records1.png" alt="体重记录与趋势"></div>
  <div id="timeline"></div><img id="header" src="assets/header.png" alt="点滴">
@@ -31,5 +31,19 @@
   <button id="cameraClose" type="button" aria-label="关闭拍照页面"></button>
   <button id="cameraCapture" type="button" aria-label="拍照"></button>
  </div>
+ <div id="mediaLayer" hidden>
+  <button id="mediaOutside" aria-label="关闭拍照或相册面板"></button>
+  <section id="cameraPanel" class="mediaPanel" role="dialog" aria-label="拍照" hidden>
+   <img src="assets/camera-panel-2x.png" alt="">
+   <button id="cameraPanelBack" aria-label="返回选择栏"></button>
+   <button id="cameraPanelCapture" aria-label="拍照"></button>
+   <button id="cameraPanelFlip" aria-label="切换相机"></button>
+  </section>
+  <section id="albumPanel" class="mediaPanel" role="dialog" aria-label="选择照片" hidden>
+   <div id="albumGrid" aria-label="相册图片"><div id="albumTrack"></div></div>
+   <button id="albumBack" aria-label="返回选择栏"><img src="assets/album-back.svg" alt=""></button>
+   <button id="albumConfirm" aria-label="所有照片"><span>所有照片</span></button>
+  </section>
+ </div>
 </section></main>
-<script src="app.js?v=31"></script><script src="photo-drag.js?v=31"></script><script src="keyboard-scene.js?v=31"></script></body></html>
+<script src="app.js?v=31"></script><script src="photo-drag.js?v=31"></script><script src="keyboard-scene.js?v=41"></script></body></html>

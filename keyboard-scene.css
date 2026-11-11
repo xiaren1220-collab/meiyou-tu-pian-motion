@@ -26,6 +26,12 @@
 #keyboardScene[data-keyboard-active="true"] #keyboardPlaceholder::before{content:"";position:absolute;left:0;top:6px;width:1.5px;height:18px;background:#ff448c;}
 #keyboardSend,#keyboardSend img{width:26px;height:26px;flex:none;}
 #keyboardSheet{position:absolute;left:0;top:549px;width:402px;height:325px;transform:translateY(325px);z-index:5;will-change:transform;}
+/* The indicator is part of the supplied images. Fade a matching patch over it
+   while a media panel is present, without changing the keyboard or tab bar. */
+#keyboardScene::after{content:"";position:absolute;left:121px;bottom:5px;width:160px;height:12px;z-index:7;pointer-events:none;background:#fff;opacity:0;transition:opacity 180ms ease;}
+#keyboardScene[data-keyboard-active="true"]::after{background:#d0d3da;}
+#keyboardScene.media-active::after{opacity:1;}
+@media(prefers-reduced-motion:reduce){#keyboardScene::after{transition-duration:1ms;}}
 #keyboardDismiss{position:absolute;top:106px;left:0;width:402px;height:291px;pointer-events:auto;z-index:3;}
 #keyboardHideKey{position:absolute;left:364px;top:549px;width:38px;height:42px;pointer-events:auto;z-index:6;}
 #keyboardMenuBlocker{position:absolute;inset:0;z-index:50;touch-action:none;}
@@ -64,3 +70,30 @@
 #keyboardScene[data-variant="2"] #keyboardPhotoScroller{top:12px;}
 #keyboardScene[data-variant="2"] #keyboardPhotoTrack{padding-left:12px;padding-right:12px;}
 #keyboardScene[data-variant="2"] #keyboardInputRow{left:12px;right:12px;}
+/* 相机与相册使用 Figma 的 378×504 面板，原页面和键盘保留在下面。 */
+#mediaLayer{position:absolute;inset:0;z-index:80;pointer-events:auto;}
+#mediaLayer[hidden],.mediaPanel[hidden]{display:none;}
+#mediaOutside{position:absolute;inset:0;width:100%;height:100%;}
+.mediaPanel{position:absolute;left:12px;top:358px;width:378px;height:504px;overflow:hidden;border-radius:48px;touch-action:pan-y;will-change:transform;}
+#cameraPanel>img{width:378px;height:504px;}
+#cameraPanel button,#albumBack,#albumConfirm{position:absolute;z-index:2;-webkit-tap-highlight-color:transparent;}
+#cameraPanelBack,#albumBack{left:24px;bottom:24px;width:46px;height:46px;border-radius:50%;}
+#cameraPanelCapture{left:157px;bottom:15px;width:64px;height:64px;border-radius:50%;}
+#cameraPanelFlip{right:24px;bottom:24px;width:46px;height:46px;border-radius:50%;}
+#albumPanel{background:#fff;box-shadow:inset 0 0 0 .5px #ccc;}
+#albumGrid{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;touch-action:none;}
+#albumTrack{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:calc((378px - 4px)/3);gap:2px;align-content:start;will-change:transform;}
+#albumGrid::-webkit-scrollbar{display:none;}
+#albumGrid button{position:relative;overflow:hidden;background:#eee;touch-action:none;}
+.meal-image{display:block;width:100%;height:100%;background-image:url('assets/album-meals.png');background-size:300% 400%;background-position:calc(var(--meal-col) * 50%) calc(var(--meal-row) * 33.333333%);}
+#albumGrid .selection-number{display:block;position:absolute;z-index:1;top:5px;right:5px;width:22px;height:22px;line-height:22px;text-align:center;color:#fff;background:rgba(0,0,0,.2);box-shadow:0 0 0 1px rgba(255,255,255,.7);border-radius:50%;font-size:13px;}
+#albumGrid button[aria-pressed="true"] .selection-number{background:#ff448c;border:1px solid #fff;box-shadow:none;line-height:20px;}
+#albumGrid button::after{content:"";position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity 160ms ease;}
+#albumGrid.is-limit button[aria-pressed="false"]::after{opacity:.4;}
+#albumBack{display:grid;place-items:center;background:rgba(0,0,0,.4);}
+#albumBack img{width:18px;height:18px;}
+#albumConfirm{right:24px;bottom:24px;width:108px;height:46px;border-radius:49px;background:rgba(0,0,0,.4);color:white;font-size:17px;line-height:46px;transition:width 150ms cubic-bezier(.2,.8,.2,1),background-color 150ms ease;}
+#albumConfirm span{display:inline-block;}
+#albumConfirm.selected{width:132px;background:#ff448c;}
+.photo>.meal-image{width:76px;height:76px;border-radius:8px;}
+@media(max-width:480px){.scene-tabs button{font-size:12px;padding-left:8px;padding-right:8px;}}

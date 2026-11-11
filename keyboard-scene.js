@@ -5,6 +5,8 @@
  const viewport=$('#keyboardPhotoScroller'),track=$('#keyboardPhotoTrack'),photos=$('#keyboardPhotos'),add=$('#keyboardAdd'),text=$('#keyboardTextInput');
  const blocker=$('#keyboardMenuBlocker'),anchor=$('#keyboardMenuAnchor'),menu=$('#keyboardMenu');
  const cameraScreen=$('#cameraScreen'),cameraClose=$('#cameraClose'),cameraCapture=$('#cameraCapture');
+ const mediaLayer=$('#mediaLayer'),cameraPanel=$('#cameraPanel'),albumPanel=$('#albumPanel'),albumGrid=$('#albumGrid');
+ const albumConfirm=$('#albumConfirm'),albumTrack=$('#albumTrack');
  const camera=document.createElement('button');camera.id='keyboardCamera';camera.setAttribute('aria-label','相机，展开选择栏');camera.innerHTML='<img src="assets/camera-2x.png" alt="">';$('#keyboardInputRow').append(camera);
  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
  const DURATION=333,EASING='cubic-bezier(0.2, 0.8, 0.2, 1)';
@@ -16,8 +18,10 @@
  let current={...endpoints.closed,bgTop:506,bgBottom:783,bgOpacity:1,icons:1},mode='closed',frame=0,clock=null,items=[1],nextId=1;
  let suppressOutsideClick=false,pendingReveal=false,lastTrigger=null,followTrailing=false;
  let restoring=false,restoreTop=0,restoreBottom=0,restoreProgress=0;
- let menuReturn='closed',variant='1';
+ let menuReturn='closed',variant='2';
  let cameraState='closed',cameraAnimation=null;
+ let mediaState='closed',mediaType=null,mediaPreviousMode='closed',mediaAnimation=null,selectedMeals=[];
+ const itemMeals=new Map();
  const clamp=x=>Math.max(0,Math.min(1,x));
  const ease=x=>1-Math.pow(1-clamp(x),3);
  function surface(value){
@@ -113,14 +117,22 @@
   }
   frame=requestAnimationFrame(tick);
  }
- function renderPhotos(){
+ function mealImage(index){
+  const image=document.createElement('span');image.className='meal-image';
+  image.style.setProperty('--meal-col',index%3);image.style.setProperty('--meal-row',Math.floor(index/3));
+  return image;
+ }
+ function renderPhotos(newIds=[]){
   photos.replaceChildren();
   for(const id of items){
    const el=document.createElement('div');el.className='photo';
-   const img=document.createElement('img');img.src='assets/photo.png';img.alt=`已添加图片 ${id}`;
+   const img=itemMeals.has(id)?mealImage(itemMeals.get(id)):document.createElement('img');
+   if(!itemMeals.has(id))img.src='assets/photo.png';
+   img.setAttribute('role','img');img.setAttribute('aria-label',`已添加图片 ${id}`);
    const remove=document.createElement('button');remove.setAttribute('aria-label',`删除图片 ${id}`);remove.innerHTML='<img src="assets/remove.svg" alt="">';
-   remove.onclick=()=>{if(mode!=='closed'&&mode!=='keyboard')return;items=items.filter(x=>x!==id);renderPhotos();if(!items.length)animate('closed');};
+   remove.onclick=()=>{if(mode!=='closed'&&mode!=='keyboard')return;items=items.filter(x=>x!==id);itemMeals.delete(id);renderPhotos();if(!items.length)animate('closed');};
    el.append(img,remove);photos.append(el);
+   if(newIds.includes(id)&&!reduced.matches)el.animate([{opacity:0,transform:'translateY(12px) scale(.9)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:333,delay:150,easing:EASING,fill:'both'});
   }
   add.hidden=!items.length||items.length>=9;
   requestAnimationFrame(()=>{viewport.scrollTo({left:track.offsetWidth-viewport.clientWidth,behavior:reduced.matches?'instant':'smooth'});});
@@ -146,15 +158,106 @@
    {duration:reduced.matches?1:DURATION,easing:EASING,fill:'forwards'});
   cameraAnimation.onfinish=()=>{cameraScreen.hidden=true;cameraAnimation.cancel();cameraAnimation=null;cameraState='closed';document.querySelector('.scene-tabs').inert=false;};
  }
+ function renderAlbum(){
+  const atLimit=items.length+selectedMeals.length>=9;
+  albumGrid.classList.toggle('is-limit',atLimit);
+  albumTrack.replaceChildren();
+  for(let index=0;index<12;index++){
+   const tile=document.createElement('button');tile.type='button';tile.setAttribute('aria-label',`餐食照片 ${index+1}`);
+   const position=selectedMeals.indexOf(index);tile.setAttribute('aria-pressed',String(position!==-1));
+   tile.setAttribute('aria-disabled',String(atLimit&&position===-1));
+   const number=document.createElement('span');number.className='selection-number';number.textContent=position<0?'':String(position+1);
+   tile.append(mealImage(index),number);
+   tile.onclick=()=>{const at=selectedMeals.indexOf(index);if(at>=0)selectedMeals.splice(at,1);else if(selectedMeals.length<9-items.length)selectedMeals.push(index);renderAlbum();};
+   albumTrack.append(tile);
+  }
+  const count=selectedMeals.length;
+  albumConfirm.classList.toggle('selected',count>0);
+  albumConfirm.setAttribute('aria-label',count?`添加${count}张照片`:'所有照片');
+  const label=albumConfirm.querySelector('span');
+  if(count){
+   let number=label.querySelector('[data-count]');
+   if(!number){number=document.createElement('span');number.dataset.count='';label.replaceChildren('添加',number,'张照片');}
+   number.textContent=String(count);
+  }else if(label.textContent!=='所有照片')label.textContent='所有照片';
+ }
+ // Scroll normally within the album, with a bounded elastic pull at either edge.
+ let albumGesture=null,albumOffset=0,albumFrame=0,albumSuppressClick=false;
+ const albumPaint=value=>{albumOffset=value;albumTrack.style.transform=`translate3d(0,${value}px,0)`;};
+ function albumRebound(){
+  cancelAnimationFrame(albumFrame);
+  if(reduced.matches){albumPaint(0);return;}
+  let velocity=0,last=performance.now();
+  function tick(now){const dt=Math.min(32,now-last)/1000;last=now;velocity+=(-210*albumOffset-25*velocity)*dt;albumPaint(albumOffset+velocity*dt);if(Math.abs(albumOffset)<.08&&Math.abs(velocity)<1){albumPaint(0);albumFrame=0;}else albumFrame=requestAnimationFrame(tick);}
+  albumFrame=requestAnimationFrame(tick);
+ }
+ albumGrid.addEventListener('pointerdown',event=>{
+  if(!event.isPrimary||event.button!==0)return;
+  cancelAnimationFrame(albumFrame);albumSuppressClick=false;
+  albumGesture={id:event.pointerId,x:event.clientX,y:event.clientY,scroll:albumGrid.scrollTop,offset:albumOffset,scale:app.getBoundingClientRect().width/402,moved:false};
+ });
+ albumGrid.addEventListener('pointermove',event=>{
+  const g=albumGesture;if(!g||event.pointerId!==g.id)return;
+  const delta=(event.clientY-g.y)/g.scale;
+  if(!g.moved){if(Math.abs(delta)<6)return;if(Math.abs(event.clientX-g.x)>Math.abs(event.clientY-g.y)){albumGesture=null;return;}g.moved=true;albumGrid.setPointerCapture(event.pointerId);}
+  event.preventDefault();
+  const max=Math.max(0,albumGrid.scrollHeight-albumGrid.clientHeight),raw=g.scroll-delta,clamped=Math.max(0,Math.min(max,raw));
+  albumGrid.scrollTop=clamped;
+  const beyond=g.offset+clamped-raw;albumPaint(Math.sign(beyond)*94*(1-Math.exp(-Math.abs(beyond)/94)));
+ },{passive:false});
+ function albumEnd(event){
+  const g=albumGesture;if(!g||g.id!==event.pointerId)return;
+  albumGesture=null;if(albumGrid.hasPointerCapture(event.pointerId))albumGrid.releasePointerCapture(event.pointerId);
+  if(g.moved){event.preventDefault();albumSuppressClick=true;}if(albumOffset)albumRebound();
+ }
+ albumGrid.addEventListener('pointerup',albumEnd);
+ albumGrid.addEventListener('pointercancel',albumEnd);
+ albumGrid.addEventListener('lostpointercapture',event=>{if(event.target===albumGrid&&albumGesture?.id===event.pointerId){albumGesture=null;albumSuppressClick=true;albumRebound();}});
+ albumGrid.addEventListener('click',event=>{if(albumSuppressClick){event.preventDefault();event.stopImmediatePropagation();albumSuppressClick=false;}},true);
+ function openMedia(type){
+  if(mediaState!=='closed')return;
+  mediaType=type;mediaPreviousMode=menuReturn;mediaState='opening';selectedMeals=[];
+  cameraPanel.hidden=type!=='camera';albumPanel.hidden=type!=='album';mediaLayer.hidden=false;
+  scene.classList.add('media-active');
+  document.querySelector('.scene-tabs').inert=true;
+  if(type==='album'){cancelAnimationFrame(albumFrame);albumGesture=null;albumPaint(0);albumGrid.scrollTop=0;renderAlbum();}
+  animate(mediaPreviousMode);
+  const panel=type==='camera'?cameraPanel:albumPanel;
+  mediaAnimation?.cancel();
+  mediaAnimation=panel.animate([{transform:'translateY(516px)'},{transform:'translateY(0)'}],{duration:reduced.matches?1:300,easing:'cubic-bezier(0.2, 0.8, 0.2, 1)',fill:'both'});
+  mediaAnimation.onfinish=()=>{mediaState='open';};
+ }
+ function closeMedia(action){
+  if(mediaState!=='open'&&mediaState!=='opening')return;
+  const panel=mediaType==='camera'?cameraPanel:albumPanel;
+  const transform=getComputedStyle(panel).transform;
+  mediaState='closing';
+  if(action==='capture'||action==='add'){
+   const additions=action==='capture'?[null]:selectedMeals.slice();
+   const newIds=[];
+   for(const index of additions){if(items.length>=9)break;const id=++nextId;items.push(id);newIds.push(id);if(index!==null)itemMeals.set(id,index);}
+   pendingReveal=newIds.length>0;renderPhotos(newIds);animate(mediaPreviousMode);
+  }else if(action==='back'){
+   animate('menu');
+  }
+  mediaAnimation?.cancel();
+  mediaAnimation=panel.animate([{transform:transform==='none'?'translateY(0)':transform},{transform:'translateY(516px)'}],{duration:reduced.matches?1:250,easing:'cubic-bezier(0.4, 0, 1, 1)',fill:'forwards'});
+  mediaAnimation.onfinish=()=>{mediaLayer.hidden=true;cameraPanel.hidden=albumPanel.hidden=true;mediaAnimation.cancel();mediaAnimation=null;mediaState='closed';mediaType=null;scene.classList.remove('media-active');document.querySelector('.scene-tabs').inert=false;};
+ }
  window.attachPhotoDrag(viewport,track,photos,()=>app.dataset.scene==='3'&&((mode==='closed'&&scene.dataset.state==='closed')||(mode==='keyboard'&&scene.dataset.state==='open')));
  text.onclick=()=>{if(mode==='closed')animate('keyboard');};
  camera.onclick=()=>{if(mode==='closed'||mode==='keyboard')animate('menu');};
  add.onclick=()=>{if(mode==='closed'||mode==='keyboard')animate('menu');};
  dismiss.onclick=hideKey.onclick=()=>animate('closed');
- menu.querySelector('[data-source="camera"]').onclick=openCamera;
- menu.querySelector('[data-source="album"]').onclick=()=>{if(items.length<9)items.push(++nextId);pendingReveal=true;renderPhotos();animate(menuReturn);};
+ menu.querySelector('[data-source="camera"]').onclick=()=>{if(variant==='2')openMedia('camera');else openCamera();};
+ menu.querySelector('[data-source="album"]').onclick=()=>{if(variant==='2'){openMedia('album');return;}if(items.length<9)items.push(++nextId);pendingReveal=true;renderPhotos();animate(menuReturn);};
  cameraClose.onclick=()=>closeCamera(false);
  cameraCapture.onclick=()=>closeCamera(true);
+ $('#cameraPanelBack').onclick=()=>closeMedia('back');
+ $('#cameraPanelCapture').onclick=()=>closeMedia('capture');
+ $('#albumBack').onclick=()=>closeMedia('back');
+ $('#mediaOutside').onclick=()=>closeMedia('outside');
+ albumConfirm.onclick=()=>{if(selectedMeals.length)closeMedia('add');};
  document.addEventListener('pointerdown',event=>{
   if(app.dataset.scene!=='3'||mode!=='menu'||anchor.contains(event.target))return;
   event.preventDefault();event.stopImmediatePropagation();suppressOutsideClick=true;animate(menuReturn);
@@ -162,9 +265,9 @@
  document.addEventListener('click',event=>{if(suppressOutsideClick){suppressOutsideClick=false;event.preventDefault();event.stopImmediatePropagation();}},true);
  document.addEventListener('pointerdown',event=>{if(!blocker.hidden&&anchor.contains(event.target))suppressOutsideClick=false;},true);
  blocker.onclick=event=>{event.stopPropagation();if(mode==='menu')animate(menuReturn);};
- document.addEventListener('keydown',event=>{if(event.key!=='Escape'||app.dataset.scene!=='3')return;if(cameraState==='open'){closeCamera(false);return;}if(cameraState==='closed'&&mode!=='closed')animate(mode==='menu'?menuReturn:'closed');});
+ document.addEventListener('keydown',event=>{if(event.key!=='Escape'||app.dataset.scene!=='3')return;if(mediaState==='open'){closeMedia('outside');return;}if(cameraState==='open'){closeCamera(false);return;}if(cameraState==='closed'&&mediaState==='closed'&&mode!=='closed')animate(mode==='menu'?menuReturn:'closed');});
  function reset(){cancelAnimationFrame(frame);clock?.cancel();mode='closed';scene.dataset.variant=variant;scene.dataset.flatInput='false';scene.dataset.keyboardActive='false';scene.dataset.mode='closed';scene.dataset.state='closed';suppressOutsideClick=false;render(endpoint('closed'));text.setAttribute('aria-expanded','false');add.setAttribute('aria-expanded','false');viewport.style.overflowX='auto';$('#keyboardPlaceholder').textContent='点击输入或按住语音记录';}
- document.querySelectorAll('[data-variant]').forEach(tab=>tab.addEventListener('click',()=>{variant=tab.dataset.variant;records.src='assets/variant-records-2x.png';records.style.top='-153px';records.style.height='545px';document.querySelectorAll('[data-variant]').forEach(t=>t.setAttribute('aria-selected',String(t===tab)));reset();}));
+ document.querySelectorAll('.scene-tabs [data-variant]').forEach(tab=>tab.addEventListener('click',()=>{variant=tab.dataset.variant;records.src='assets/variant-records-2x.png';records.style.top='-153px';records.style.height='545px';document.querySelectorAll('.scene-tabs [data-variant]').forEach(t=>t.setAttribute('aria-selected',String(t===tab)));reset();}));
  window.addEventListener('resize',()=>{if(mode==='menu')positionMenu();});
  viewport.addEventListener('scroll',()=>{if(mode==='menu')positionMenu();});
  const slices='<img class="panelCap" src="assets/panel-cap-2x.png" alt=""><img class="panelMiddle" src="assets/panel-middle-2x.png" alt=""><img class="panelBottom" src="assets/panel-bottom-2x.png" alt=""><img class="panelTop" src="assets/panel-icons-2x.png" alt="">';
