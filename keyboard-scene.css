@@ -36,10 +36,10 @@
 #keyboardHideKey{position:absolute;left:364px;top:549px;width:38px;height:42px;pointer-events:auto;z-index:6;}
 #keyboardMenuBlocker{position:absolute;inset:0;z-index:50;touch-action:none;}
 #keyboardMenuAnchor{position:absolute;width:145px;height:104px;z-index:51;}
-#keyboardMenu{width:145px;height:104px;background:white;padding:4px 16px;border-radius:12px;box-shadow:0 0 20px #00000014;transform-origin:50% 50%;}
-#keyboardMenu button{width:113px;height:48px;display:flex;align-items:center;gap:8px;font-size:17px;line-height:22px;letter-spacing:-.0731px;white-space:nowrap;}
-#keyboardMenu button:first-child{border-bottom:.5px solid #e8e8e8;}
-#keyboardMenu button img{width:20px;height:20px;}
+#keyboardMenu,.menuMorphContent{width:145px;height:104px;background:white url('assets/selection-menu-slice-2x.png') center/185px 144px no-repeat;padding:4px 16px;border-radius:12px;box-shadow:0 0 20px #00000014;transform-origin:50% 50%;}
+#keyboardMenu button,.menuMorphContent button{position:relative;width:113px;height:48px;display:flex;align-items:center;gap:8px;font-size:17px;line-height:22px;letter-spacing:-.0731px;white-space:nowrap;color:transparent;}
+#keyboardMenu button img,.menuMorphContent button img{width:20px;height:20px;opacity:0;}
+#keyboardMenu button:first-child::after,.menuMorphContent button:first-child::after{content:attr(data-visible-label);position:absolute;left:28px;top:50%;transform:translateY(-50%);color:#323232;background:#fff;line-height:22px;}
 .scene-tabs button{padding-left:12px;padding-right:12px;white-space:nowrap;}
 @media(max-width:370px){.scene-tabs button{font-size:12px;padding-left:9px;padding-right:9px;}}
 
@@ -96,4 +96,6 @@
 #albumConfirm span{display:inline-block;}
 #albumConfirm.selected{width:132px;background:#ff448c;}
 .photo>.meal-image{width:76px;height:76px;border-radius:8px;}
-@media(max-width:480px){.scene-tabs button{font-size:12px;padding-left:8px;padding-right:8px;}}
+.scene-tabs{max-width:100%;overflow-x:auto;scrollbar-width:none;}
+.scene-tabs::-webkit-scrollbar{display:none;}
+@media(max-width:560px){.scene-tabs button{font-size:11px;padding-left:6px;padding-right:6px;}}
