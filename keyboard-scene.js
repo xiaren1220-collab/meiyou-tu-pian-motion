@@ -7,6 +7,7 @@
  const cameraScreen=$('#cameraScreen'),cameraClose=$('#cameraClose'),cameraCapture=$('#cameraCapture');
  const mediaLayer=$('#mediaLayer'),cameraPanel=$('#cameraPanel'),albumPanel=$('#albumPanel'),albumGrid=$('#albumGrid');
  const albumConfirm=$('#albumConfirm'),albumTrack=$('#albumTrack');
+ const foodTool=$('#foodTool'),foodPanel=$('#foodCameraPanel'),foodRecords=$('#foodRecords');
  const camera=document.createElement('button');camera.id='keyboardCamera';camera.setAttribute('aria-label','相机，展开选择栏');camera.innerHTML='<img src="assets/input-camera-2x.png" alt="">';$('#keyboardInputRow').append(camera);
  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
  const DURATION=333,EASING='cubic-bezier(0.2, 0.8, 0.2, 1)';
@@ -21,7 +22,9 @@
  let menuReturn='closed',variant='2',mediaMotion='center',mediaMenuCenter=null;
  let cameraState='closed',cameraAnimation=null;
  let mediaState='closed',mediaType=null,mediaPreviousMode='closed',mediaAnimation=null,mediaMorphGhost=null,selectedMeals=[];
+ let foodMode=false,foodOffset=0,foodCount=0,foodScrollFrame=0;
  const itemMeals=new Map();
+ const albumPreload=new Image();albumPreload.src='assets/album-meals.png';albumPreload.decode?.().catch(()=>{});
  const clamp=x=>Math.max(0,Math.min(1,x));
  const ease=x=>1-Math.pow(1-clamp(x),3);
  function surface(value){
@@ -73,7 +76,12 @@
   card.style.left=`${current.x}px`;card.style.top=`${current.y}px`;card.style.width=`${current.width}px`;
   if(followTrailing)viewport.scrollLeft=Math.max(0,track.offsetWidth-viewport.clientWidth);
   sheet.style.transform=`translateY(${325*(1-current.keyboard)}px)`;
-  records.style.transform=`translateY(${current.records}px)`;
+  const foodShift=mediaMotion==='center'?foodOffset:0;
+  records.style.transform=`translateY(${current.records+foodShift}px)`;
+  foodRecords.style.transform=`translateY(${current.records+foodShift}px)`;
+  foodRecords.hidden=mediaMotion!=='center';
+  foodTool.hidden=mediaMotion!=='center'||mode!=='closed'||current.icons<.99;
+  foodTool.style.top=`${current.bgTop+20}px`;
   // Cut the continuous line beneath the exported nodes instead of drawing over them.
   const holes=(variant==='2'?[current.records-227.5,current.records-183,current.records-86.5,current.records+10.5]:[current.records-126.5,current.records-82,current.records+15]).filter(y=>y>0&&y<768);
   const stops=['#000 0px'];for(const y of holes)stops.push(`#000 ${y-4}px`,`transparent ${y-4}px`,`transparent ${y+4}px`,`#000 ${y+4}px`);stops.push('#000 100%');
@@ -159,16 +167,17 @@
   cameraAnimation.onfinish=()=>{cameraScreen.hidden=true;cameraAnimation.cancel();cameraAnimation=null;cameraState='closed';document.querySelector('.scene-tabs').inert=false;};
  }
  function renderAlbum(){
-  const atLimit=items.length+selectedMeals.length>=9;
+  const atLimit=(foodMode?0:items.length)+selectedMeals.length>=9;
   albumGrid.classList.toggle('is-limit',atLimit);
   albumTrack.replaceChildren();
   for(let index=0;index<12;index++){
    const tile=document.createElement('button');tile.type='button';tile.setAttribute('aria-label',`餐食照片 ${index+1}`);
+   if(foodMode){tile.append(mealImage(index));tile.onclick=()=>closeFood([index]);albumTrack.append(tile);continue;}
    const position=selectedMeals.indexOf(index);tile.setAttribute('aria-pressed',String(position!==-1));
    tile.setAttribute('aria-disabled',String(atLimit&&position===-1));
    const number=document.createElement('span');number.className='selection-number';number.textContent=position<0?'':String(position+1);
    tile.append(mealImage(index),number);
-   tile.onclick=()=>{const at=selectedMeals.indexOf(index);if(at>=0)selectedMeals.splice(at,1);else if(selectedMeals.length<9-items.length)selectedMeals.push(index);renderAlbum();};
+   tile.onclick=()=>{const at=selectedMeals.indexOf(index);if(at>=0)selectedMeals.splice(at,1);else if(selectedMeals.length<9-(foodMode?0:items.length))selectedMeals.push(index);renderAlbum();};
    albumTrack.append(tile);
   }
   const count=selectedMeals.length;
@@ -313,6 +322,71 @@
   mediaAnimation=panel.animate(closing,{duration:reduced.matches?1:duration,easing:mediaMotion==='center'?EASING:'cubic-bezier(0.4, 0, 1, 1)',fill:'forwards'});
   mediaAnimation.onfinish=()=>{if(newPhoto)newPhoto.style.visibility='';preview?.remove();removeMenuMorph();mediaLayer.hidden=true;cameraPanel.hidden=albumPanel.hidden=true;mediaAnimation.cancel();mediaAnimation=null;mediaState='closed';mediaType=null;anchor.style.visibility='';scene.classList.remove('media-active');document.querySelector('.scene-tabs').inert=false;};
  }
+ function foodPanelTransform(rect){
+  return panelTransform(rect);
+ }
+ function openFood(){
+  if(mediaMotion!=='center'||mode!=='closed'||mediaState!=='closed')return;
+  foodMode=true;mediaState='opening';mediaType='food-camera';selectedMeals=[];
+  renderAlbum();
+  mediaLayer.hidden=false;foodPanel.hidden=false;cameraPanel.hidden=albumPanel.hidden=true;
+  scene.classList.add('media-active');document.querySelector('.scene-tabs').inert=true;
+  const origin=localRect(foodTool),duration=reduced.matches?1:180;
+  mediaAnimation=foodPanel.animate([{transform:foodPanelTransform(origin),opacity:0},{transform:'translate(0,0) scale(1)',opacity:1}],{duration,easing:EASING,fill:'both'});
+  mediaAnimation.onfinish=()=>{mediaState='open';};
+ }
+ function switchFoodMedia(toAlbum){
+  if(!foodMode||mediaState!=='open')return;
+  mediaState='opening';const from=toAlbum?foodPanel:albumPanel,to=toAlbum?albumPanel:foodPanel;
+  if(toAlbum){albumGrid.scrollTop=0;albumPaint(0);}
+  to.hidden=false;const duration=reduced.matches?1:180;
+  from.animate([{opacity:1},{opacity:0}],{duration,easing:EASING,fill:'forwards'});
+  mediaAnimation=to.animate([{opacity:0},{opacity:1}],{duration,easing:EASING,fill:'forwards'});
+  mediaAnimation.onfinish=()=>{from.hidden=true;from.getAnimations().forEach(a=>a.cancel());mediaAnimation.cancel();mediaAnimation=null;mediaType=toAlbum?'food-album':'food-camera';mediaState='open';};
+ }
+ function foodPicture(index){
+  const picture=document.createElement('div'),img=document.createElement('img');
+  picture.className='food-record-picture';
+  if(index===null){img.className='food-card-photo';img.src='assets/food-card-2x.png';}
+  else{img.className='food-album-photo';img.src='assets/album-meals.png';img.style.setProperty('--meal-col',index%3);img.style.setProperty('--meal-row',Math.floor(index/3));}
+  picture.append(img);return picture;
+ }
+ function finishFood(){
+  foodPanel.hidden=albumPanel.hidden=true;mediaLayer.hidden=true;scene.classList.remove('media-active');
+  document.querySelector('.scene-tabs').inert=false;foodMode=false;mediaType=null;mediaState='closed';
+ }
+ function closeFood(additions=null){
+  if(!foodMode||mediaState!=='open')return;
+  mediaState='closing';const source=mediaType==='food-album'?albumPanel:foodPanel;
+  const sourceRect=localRect(source),duration=reduced.matches?1:(additions?DURATION:180);
+  if(!additions){
+   const origin=localRect(foodTool),end=source===foodPanel?foodPanelTransform(origin):panelTransform(origin);
+   mediaAnimation=source.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:end,opacity:0}],{duration,easing:EASING,fill:'forwards'});
+   mediaAnimation.onfinish=()=>{mediaAnimation.cancel();finishFood();};return;
+  }
+  const created=[];
+  for(const index of additions){
+   const row=document.createElement('div');row.className='food-record';row.style.top=`${400+foodCount*337}px`;
+   const base=document.createElement('img');base.src='assets/food-card-2x.png';base.alt='正在识别食物的记录';
+   const picture=foodPicture(index);picture.style.background='#fff';picture.firstElementChild.style.visibility='hidden';row.append(base,picture);foodRecords.append(row);foodCount++;created.push({row,picture,index});
+   row.animate([{opacity:0},{opacity:1}],{duration,easing:EASING,fill:'both'});
+  }
+  const last=created[created.length-1],targetOffset=current.bgTop-20-(106+400+(foodCount-1)*337+329+current.records);
+  const startOffset=foodOffset,start=performance.now();cancelAnimationFrame(foodScrollFrame);
+  function scroll(now){const p=Math.min(1,(now-start)/duration),e=1-Math.pow(1-p,3);foodOffset=startOffset+(targetOffset-startOffset)*e;render(current);if(p<1)foodScrollFrame=requestAnimationFrame(scroll);}
+  foodScrollFrame=requestAnimationFrame(scroll);
+  const target=localRect(last.picture);target.y+=targetOffset-startOffset;
+  const flight=foodPicture(last.index);flight.className='food-fly-picture';mediaLayer.append(flight);
+  const scale=sourceRect.width/180,startX=sourceRect.x,startY=sourceRect.y+(sourceRect.height-240*scale)/2;
+  flight.animate([{transform:`translate(${startX}px,${startY}px) scale(${scale})`},{transform:`translate(${target.x}px,${target.y}px) scale(1)`}],{duration,easing:EASING,fill:'forwards'});
+  flight.animate([{opacity:0},{opacity:1,offset:.45},{opacity:1}],{duration,easing:EASING,fill:'forwards'});
+  mediaAnimation=source.animate([{opacity:1},{opacity:0,offset:.45},{opacity:0}],{duration,easing:EASING,fill:'forwards'});
+  mediaAnimation.onfinish=()=>{for(const item of created)item.picture.firstElementChild.style.visibility='';flight.remove();mediaAnimation.cancel();finishFood();};
+ }
+ foodTool.onclick=openFood;
+ $('#foodCameraBack').onclick=()=>closeFood();
+ $('#foodCameraCapture').onclick=()=>closeFood([null]);
+ $('#foodCameraAlbum').onclick=()=>switchFoodMedia(true);
  window.attachPhotoDrag(viewport,track,photos,()=>app.dataset.scene==='3'&&((mode==='closed'&&scene.dataset.state==='closed')||(mode==='keyboard'&&scene.dataset.state==='open')));
  text.onclick=()=>{if(mode==='closed')animate('keyboard');};
  camera.onclick=()=>{if(mode==='closed'||mode==='keyboard')animate('menu');};
@@ -324,9 +398,9 @@
  cameraCapture.onclick=()=>closeCamera(true);
  $('#cameraPanelBack').onclick=()=>closeMedia('back');
  $('#cameraPanelCapture').onclick=()=>closeMedia('capture');
- $('#albumBack').onclick=()=>closeMedia('back');
- $('#mediaOutside').onclick=()=>closeMedia('outside');
- albumConfirm.onclick=()=>{if(selectedMeals.length)closeMedia('add');};
+ $('#albumBack').onclick=()=>foodMode?switchFoodMedia(false):closeMedia('back');
+ $('#mediaOutside').onclick=()=>foodMode?closeFood():closeMedia('outside');
+ albumConfirm.onclick=()=>{if(selectedMeals.length)foodMode?closeFood(selectedMeals.slice()):closeMedia('add');};
  document.addEventListener('pointerdown',event=>{
   if(app.dataset.scene!=='3'||mode!=='menu'||mediaState!=='closed'||cameraState!=='closed'||anchor.contains(event.target))return;
   event.preventDefault();event.stopImmediatePropagation();suppressOutsideClick=true;animate(menuReturn);
@@ -334,7 +408,7 @@
  document.addEventListener('click',event=>{if(suppressOutsideClick){suppressOutsideClick=false;event.preventDefault();event.stopImmediatePropagation();}},true);
  document.addEventListener('pointerdown',event=>{if(!blocker.hidden&&anchor.contains(event.target))suppressOutsideClick=false;},true);
  blocker.onclick=event=>{event.stopPropagation();if(mode==='menu')animate(menuReturn);};
- document.addEventListener('keydown',event=>{if(event.key!=='Escape'||app.dataset.scene!=='3')return;if(mediaState==='open'){closeMedia('outside');return;}if(cameraState==='open'){closeCamera(false);return;}if(cameraState==='closed'&&mediaState==='closed'&&mode!=='closed')animate(mode==='menu'?menuReturn:'closed');});
+ document.addEventListener('keydown',event=>{if(event.key!=='Escape'||app.dataset.scene!=='3')return;if(mediaState==='open'){foodMode?closeFood():closeMedia('outside');return;}if(cameraState==='open'){closeCamera(false);return;}if(cameraState==='closed'&&mediaState==='closed'&&mode!=='closed')animate(mode==='menu'?menuReturn:'closed');});
  function reset(){cancelAnimationFrame(frame);clock?.cancel();mode='closed';scene.dataset.variant=variant;scene.dataset.flatInput='false';scene.dataset.keyboardActive='false';scene.dataset.mode='closed';scene.dataset.state='closed';suppressOutsideClick=false;render(endpoint('closed'));text.setAttribute('aria-expanded','false');add.setAttribute('aria-expanded','false');viewport.style.overflowX='auto';$('#keyboardPlaceholder').textContent='点击输入或按住语音记录';}
  function setRecordsAsset(){records.src=variant==='2'?'assets/variant-records-three-2x.png':'assets/variant-records-2x.png';records.style.top=variant==='2'?'-254px':'-153px';records.style.height=variant==='2'?'646px':'545px';}
  document.querySelectorAll('.scene-tabs [data-variant]').forEach(tab=>tab.addEventListener('click',()=>{variant=tab.dataset.variant;mediaMotion=tab.dataset.motion;setRecordsAsset();document.querySelectorAll('.scene-tabs [data-variant]').forEach(t=>t.setAttribute('aria-selected',String(t===tab)));reset();}));
