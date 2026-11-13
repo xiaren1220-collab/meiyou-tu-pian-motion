@@ -22,7 +22,7 @@
  let menuReturn='closed',variant='2',mediaMotion='center',mediaMenuCenter=null;
  let cameraState='closed',cameraAnimation=null;
  let mediaState='closed',mediaType=null,mediaPreviousMode='closed',mediaAnimation=null,mediaMorphGhost=null,selectedMeals=[];
- let foodMode=false,foodOffset=0,foodCount=0,foodScrollFrame=0;
+ let foodMode=false,foodOffset=0,foodCount=0,foodScrollFrame=0,foodRetake=null,foodRetakeOrigin=null;
  const itemMeals=new Map();
  const albumPreload=new Image();albumPreload.src='assets/album-meals.png';albumPreload.decode?.().catch(()=>{});
  const clamp=x=>Math.max(0,Math.min(1,x));
@@ -325,15 +325,17 @@
  function foodPanelTransform(rect){
   return panelTransform(rect);
  }
- function openFood(){
+ function openFood(origin=foodTool){
   if(mediaMotion!=='center'||mode!=='closed'||mediaState!=='closed')return;
+  foodRetakeOrigin=foodRetake?origin:null;
+  foodRetakeOrigin?.classList.add('is-opening');
   foodMode=true;mediaState='opening';mediaType='food-camera';selectedMeals=[];
   renderAlbum();
   mediaLayer.hidden=false;foodPanel.hidden=false;cameraPanel.hidden=albumPanel.hidden=true;
   scene.classList.add('media-active');document.querySelector('.scene-tabs').inert=true;
-  const origin=localRect(foodTool),duration=reduced.matches?1:180;
-  mediaAnimation=foodPanel.animate([{transform:foodPanelTransform(origin),opacity:0},{transform:'translate(0,0) scale(1)',opacity:1}],{duration,easing:EASING,fill:'both'});
-  mediaAnimation.onfinish=()=>{mediaState='open';};
+  const originRect=localRect(origin),duration=reduced.matches?1:180;
+  mediaAnimation=foodPanel.animate([{transform:foodPanelTransform(originRect),opacity:0},{transform:'translate(0,0) scale(1)',opacity:1}],{duration,easing:EASING,fill:'both'});
+  mediaAnimation.onfinish=()=>{foodRetakeOrigin?.classList.remove('is-opening');mediaState='open';};
  }
  function switchFoodMedia(toAlbum){
   if(!foodMode||mediaState!=='open')return;
@@ -351,30 +353,59 @@
   else{img.className='food-album-photo';img.src='assets/album-meals.png';img.style.setProperty('--meal-col',index%3);img.style.setProperty('--meal-row',Math.floor(index/3));}
   picture.append(img);return picture;
  }
+ function foodHeight(row){return row.dataset.status==='failed'?404:row.dataset.status==='cancelled'?293:329;}
+ function layoutFood(){
+  let top=400;const rows=[...foodRecords.children];
+  for(const row of rows){row.style.top=`${top}px`;top+=foodHeight(row)+8;}
+  if(!rows.length)return;
+  const target=current.bgTop-20-(106+top-8+current.records),from=foodOffset,duration=reduced.matches?1:DURATION,start=performance.now();
+  cancelAnimationFrame(foodScrollFrame);
+  function tick(now){const p=Math.min(1,(now-start)/duration),e=1-Math.pow(1-p,3);foodOffset=from+(target-from)*e;render(current);if(p<1)foodScrollFrame=requestAnimationFrame(tick);}
+  foodScrollFrame=requestAnimationFrame(tick);
+ }
+ function makeFoodAnalysis(row){
+  const analysis=document.createElement('div');analysis.className='food-analysis';
+  analysis.innerHTML='<div class="food-analysis-heading"><span class="food-sparkle"><img src="assets/food-sparkle-2x.png" alt=""><span class="food-sparkle-video"></span></span><span class="food-analysis-label">正在识别食物...</span></div><div class="food-analysis-actions"><button type="button">取消</button><button type="button">重新拍摄</button></div>';
+  const [cancel,retry]=analysis.querySelectorAll('button');
+  cancel.onclick=()=>{row.dataset.status='cancelled';layoutFood();};
+  retry.onclick=()=>{foodRetake=row;openFood(retry);};
+  row.append(analysis);
+ }
+ function startFoodAnalysis(row){
+  clearTimeout(row.foodTimer);const sprite=row.querySelector('.food-sparkle-video');sprite.style.backgroundPositionX='';row.dataset.status='loading';
+  const label=row.querySelector('.food-analysis-label');label.textContent='正在识别食物...';
+  row.foodTimer=setTimeout(()=>{
+   if(!row.isConnected||row.dataset.status!=='loading')return;
+   sprite.style.backgroundPositionX=getComputedStyle(sprite).backgroundPositionX;
+   row.dataset.status='failed';label.textContent='识别失败，请调整角度重新拍摄';
+   label.animate([{opacity:0},{opacity:1}],{duration:220,easing:'ease-out'});layoutFood();
+  },2500);
+ }
  function finishFood(){
   foodPanel.hidden=albumPanel.hidden=true;mediaLayer.hidden=true;scene.classList.remove('media-active');
-  document.querySelector('.scene-tabs').inert=false;foodMode=false;mediaType=null;mediaState='closed';
+  document.querySelector('.scene-tabs').inert=false;foodMode=false;foodRetake=null;foodRetakeOrigin=null;mediaType=null;mediaState='closed';
  }
  function closeFood(additions=null){
   if(!foodMode||mediaState!=='open')return;
   mediaState='closing';const source=mediaType==='food-album'?albumPanel:foodPanel;
   const sourceRect=localRect(source),duration=reduced.matches?1:(additions?DURATION:180);
   if(!additions){
-   const origin=localRect(foodTool),end=source===foodPanel?foodPanelTransform(origin):panelTransform(origin);
+   const origin=localRect(foodRetakeOrigin?.isConnected?foodRetakeOrigin:foodTool),end=source===foodPanel?foodPanelTransform(origin):panelTransform(origin);
    mediaAnimation=source.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:end,opacity:0}],{duration,easing:EASING,fill:'forwards'});
    mediaAnimation.onfinish=()=>{mediaAnimation.cancel();finishFood();};return;
   }
   const created=[];
+  if(!foodRetake){for(const row of foodRecords.children){if(row.dataset.status==='failed')row.dataset.status='cancelled';}}
   for(const index of additions){
-   const row=document.createElement('div');row.className='food-record';row.style.top=`${400+foodCount*337}px`;
-   const base=document.createElement('img');base.src='assets/food-card-2x.png';base.alt='正在识别食物的记录';
-   const picture=foodPicture(index);picture.style.background='#fff';picture.firstElementChild.style.visibility='hidden';row.append(base,picture);foodRecords.append(row);foodCount++;created.push({row,picture,index});
-   row.animate([{opacity:0},{opacity:1}],{duration,easing:EASING,fill:'both'});
+   let row=foodRetake;
+   if(!row){row=document.createElement('div');row.className='food-record';row.dataset.status='loading';const base=document.createElement('img');base.src='assets/food-card-2x.png';base.alt='饮食记录';row.append(base);makeFoodAnalysis(row);foodRecords.append(row);foodCount++;row.animate([{opacity:0},{opacity:1}],{duration,easing:EASING,fill:'both'});}
+   const picture=foodPicture(index);picture.style.background='#fff';picture.firstElementChild.style.visibility='hidden';
+   const previous=row.querySelector('.food-record-picture');if(previous)previous.replaceWith(picture);else row.append(picture);
+   startFoodAnalysis(row);created.push({row,picture,index});foodRetake=null;
   }
-  const last=created[created.length-1],targetOffset=current.bgTop-20-(106+400+(foodCount-1)*337+329+current.records);
-  const startOffset=foodOffset,start=performance.now();cancelAnimationFrame(foodScrollFrame);
-  function scroll(now){const p=Math.min(1,(now-start)/duration),e=1-Math.pow(1-p,3);foodOffset=startOffset+(targetOffset-startOffset)*e;render(current);if(p<1)foodScrollFrame=requestAnimationFrame(scroll);}
-  foodScrollFrame=requestAnimationFrame(scroll);
+  const last=created[created.length-1],startOffset=foodOffset;
+  layoutFood();
+  const lastRow=foodRecords.lastElementChild,targetOffset=current.bgTop-20-(106+parseFloat(lastRow.style.top)+foodHeight(lastRow)+current.records);
   const target=localRect(last.picture);target.y+=targetOffset-startOffset;
   const flight=foodPicture(last.index);flight.className='food-fly-picture';mediaLayer.append(flight);
   const scale=sourceRect.width/180,startX=sourceRect.x,startY=sourceRect.y+(sourceRect.height-240*scale)/2;
@@ -383,7 +414,7 @@
   mediaAnimation=source.animate([{opacity:1},{opacity:0,offset:.45},{opacity:0}],{duration,easing:EASING,fill:'forwards'});
   mediaAnimation.onfinish=()=>{for(const item of created)item.picture.firstElementChild.style.visibility='';flight.remove();mediaAnimation.cancel();finishFood();};
  }
- foodTool.onclick=openFood;
+ foodTool.onclick=()=>{foodRetake=null;openFood();};
  $('#foodCameraBack').onclick=()=>closeFood();
  $('#foodCameraCapture').onclick=()=>closeFood([null]);
  $('#foodCameraAlbum').onclick=()=>switchFoodMedia(true);
@@ -398,7 +429,7 @@
  cameraCapture.onclick=()=>closeCamera(true);
  $('#cameraPanelBack').onclick=()=>closeMedia('back');
  $('#cameraPanelCapture').onclick=()=>closeMedia('capture');
- $('#albumBack').onclick=()=>foodMode?switchFoodMedia(false):closeMedia('back');
+ $('#albumBack').onclick=()=>foodMode?(foodRetakeOrigin?closeFood():switchFoodMedia(false)):closeMedia('back');
  $('#mediaOutside').onclick=()=>foodMode?closeFood():closeMedia('outside');
  albumConfirm.onclick=()=>{if(selectedMeals.length)foodMode?closeFood(selectedMeals.slice()):closeMedia('add');};
  document.addEventListener('pointerdown',event=>{
